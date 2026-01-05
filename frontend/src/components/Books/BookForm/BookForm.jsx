@@ -8,6 +8,7 @@ import { useFilePreview } from '../../../lib/customHooks';
 import addFileIMG from '../../../images/add_file.png';
 import styles from './BookForm.module.css';
 import { updateBook, addBook } from '../../../lib/common';
+import { IMAGE_URL } from '../../../utils/constants';
 
 function BookForm({ book, validate }) {
   const userRating = book ? book.ratings.find((elt) => elt.userId === localStorage.getItem('userId'))?.grade : 0;
@@ -99,9 +100,9 @@ function BookForm({ book, validate }) {
       <label htmlFor="file">
         <p>Visuel</p>
         <div className={styles.AddImage}>
-          {filePreview || book?.imageUrl ? (
+          {filePreview || book?.image ? (
             <>
-              <img src={filePreview ?? book?.imageUrl} alt="preview" />
+              <img src={filePreview ?? (book?.image ? `${IMAGE_URL}/${book.image}` : null)} alt="preview" />
               <p>Modifier</p>
             </>
           ) : (
@@ -127,7 +128,7 @@ BookForm.propTypes = {
     title: PropTypes.string,
     author: PropTypes.string,
     year: PropTypes.number,
-    imageUrl: PropTypes.string,
+    image: PropTypes.string,
     genre: PropTypes.string,
     ratings: PropTypes.arrayOf(PropTypes.shape({
       userId: PropTypes.string,

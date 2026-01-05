@@ -2,10 +2,18 @@ import * as PropTypes from 'prop-types';
 import React from 'react';
 import styles from '../../../pages/Book/Book.module.css';
 import { displayStars } from '../../../lib/functions';
+import { IMAGE_URL } from '../../../utils/constants';
 
 function BookInfo({ book }) {
   return (
     <div className={styles.BookInfo}>
+      {book.image && (
+        <img
+          src={`${IMAGE_URL}/${book.image}`}
+          alt={book.title}
+          className={styles.BookImage} // à ajouter dans ton CSS
+        />
+      )}
       <h1>{book.title}</h1>
       <p className={styles.Author}>{`par ${book.author}`}</p>
       <p className={styles.PublishDate}>{book.year}</p>
@@ -25,7 +33,7 @@ BookInfo.propTypes = {
     title: PropTypes.string,
     author: PropTypes.string,
     year: PropTypes.number,
-    imageUrl: PropTypes.string,
+    image: PropTypes.string,
     genre: PropTypes.string,
     ratings: PropTypes.arrayOf(PropTypes.shape({
       userId: PropTypes.string,
