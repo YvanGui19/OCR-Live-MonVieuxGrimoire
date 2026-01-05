@@ -1,7 +1,14 @@
 const Book = require("../models/book");
-const fs = require("fs");
+const cloudinary = require("../middleware/cloudinary-config");
 
-// Supprime un livre et son image associée
+// Extrait le public_id Cloudinary depuis l'URL de l'image
+const getPublicIdFromUrl = (imageUrl) => {
+  // URL format: https://res.cloudinary.com/xxx/image/upload/v123/mon-vieux-grimoire/filename.webp
+  const matches = imageUrl.match(/mon-vieux-grimoire\/[^.]+/);
+  return matches ? matches[0] : null;
+};
+
+// Supprime un livre et son image associée sur Cloudinary
 exports.deleteBook = (req, res, next) => {
   Book.findOne({ _id: req.params.id })
     .then((book) => {
@@ -14,12 +21,10 @@ exports.deleteBook = (req, res, next) => {
         return res.status(401).json({ message: "Not authorized" });
       }
 
-      // Suppression du fichier image si présent
-      const filename = book.imageUrl.split("/images/")[1];
-      const path = `images/${filename}`;
-
-      if (fs.existsSync(path)) {
-        fs.unlinkSync(path);
+      // Suppression de l'image sur Cloudinary
+      const publicId = getPublicIdFromUrl(book.imageUrl);
+      if (publicId) {
+        cloudinary.uploader.destroy(publicId).catch(console.error);
       }
 
       // Suppression du livre en base
@@ -114,11 +119,10 @@ exports.getAllBook = (req, res, next) => {
 // Modifie un livre existant et remplace éventuellement l'image
 exports.modifyBook = (req, res, next) => {
   // Récupère les données et l'image si présente
-    const PUBLIC_URL = process.env.API_URL || `${req.protocol}://${req.get("host")}`;  
-    const bookObject = req.file
+  const bookObject = req.file
     ? {
         ...JSON.parse(req.body.book),
-        imageUrl: `${PUBLIC_URL}/images/${req.file.filename}`,
+        imageUrl: req.file.cloudinaryUrl,
       }
     : { ...req.body };
 
@@ -134,13 +138,11 @@ exports.modifyBook = (req, res, next) => {
         return res.status(401).json({ message: "Not authorized" });
       }
 
-      // Suppression de l’ancienne image si une nouvelle est uploadée
+      // Suppression de l'ancienne image sur Cloudinary si une nouvelle est uploadée
       if (req.file) {
-        const oldFilename = book.imageUrl.split("/images/")[1];
-        const oldPath = `images/${oldFilename}`;
-
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
+        const oldPublicId = getPublicIdFromUrl(book.imageUrl);
+        if (oldPublicId) {
+          cloudinary.uploader.destroy(oldPublicId).catch(console.error);
         }
       }
 
@@ -161,7 +163,7 @@ exports.modifyBook = (req, res, next) => {
     .catch((error) => res.status(400).json({ error }));
 };
 
-// Création d’un nouveau livre avec image et initialisation de la note
+// Création d'un nouveau livre avec image et initialisation de la note
 exports.createBook = (req, res, next) => {
   try {
     console.log("Body book:", req.body.book);
@@ -185,20 +187,19 @@ exports.createBook = (req, res, next) => {
       });
     }
 
-    // Vérifie la présence d'une image
-    if (!req.file || !req.file.filename) {
+    // Vérifie la présence d'une image uploadée sur Cloudinary
+    if (!req.file || !req.file.cloudinaryUrl) {
       return res.status(400).json({ error: "Image file is required" });
     }
 
-    // Création du livre en base
-      const PUBLIC_URL = process.env.API_URL || `${req.protocol}://${req.get("host")}`;
-      const book = new Book({
+    // Création du livre en base avec l'URL Cloudinary
+    const book = new Book({
       title: bookObject.title,
       author: bookObject.author,
       year: bookObject.year,
       genre: bookObject.genre,
       userId: req.auth.userId,
-      imageUrl: `${PUBLIC_URL}/images/${req.file.filename}`,
+      imageUrl: req.file.cloudinaryUrl,
       ratings: [
         {
           userId: req.auth.userId,
