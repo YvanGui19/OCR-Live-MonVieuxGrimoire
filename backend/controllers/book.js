@@ -114,12 +114,11 @@ exports.getAllBook = (req, res, next) => {
 // Modifie un livre existant et remplace éventuellement l'image
 exports.modifyBook = (req, res, next) => {
   // Récupère les données et l'image si présente
-  const bookObject = req.file
+    const PUBLIC_URL = process.env.API_URL || `${req.protocol}://${req.get("host")}`;  
+    const bookObject = req.file
     ? {
         ...JSON.parse(req.body.book),
-        imageUrl: `${req.protocol}://${req.get("host")}/images/${
-          req.file.filename
-        }`,
+        imageUrl: `${PUBLIC_URL}/images/${req.file.filename}`,
       }
     : { ...req.body };
 
@@ -192,15 +191,14 @@ exports.createBook = (req, res, next) => {
     }
 
     // Création du livre en base
-    const book = new Book({
+      const PUBLIC_URL = process.env.API_URL || `${req.protocol}://${req.get("host")}`;
+      const book = new Book({
       title: bookObject.title,
       author: bookObject.author,
       year: bookObject.year,
       genre: bookObject.genre,
       userId: req.auth.userId,
-      imageUrl: `${req.protocol}://${req.get("host")}/images/${
-        req.file.filename
-      }`,
+      imageUrl: `${PUBLIC_URL}/images/${req.file.filename}`,
       ratings: [
         {
           userId: req.auth.userId,
