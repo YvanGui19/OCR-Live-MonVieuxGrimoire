@@ -1,36 +1,49 @@
 const sharp = require("sharp");
-const fs = require("fs");
+const cloudinary = require("./cloudinary-config");
 
-// Middleware de traitement d'image : optimise et convertit les fichiers uploadés en WebP
+// Middleware de traitement d'image : optimise, convertit en WebP et upload sur Cloudinary
 module.exports = async (req, res, next) => {
-  // Si aucun fichier n’est présent dans la requête, on passe au middleware suivant
+  // Si aucun fichier n'est présent dans la requête, on passe au middleware suivant
   if (!req.file) return next();
 
-  const dir = "images";
+  try {
+    // Nettoyage du nom de fichier pour éviter les caractères problématiques
+    const nameWithoutExt = req.file.originalname
+      .replace(/\.[^/.]+$/, "")
+      .split(" ")
+      .join("_");
 
-  // Vérifie l'existence du dossier de stockage et le crée si nécessaire
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir);
+    // Génère un nom de fichier unique
+    const filename = `${Date.now()}-${nameWithoutExt}`;
+
+    // Conversion de l'image en WebP avec compression
+    const optimizedBuffer = await sharp(req.file.buffer)
+      .webp({ quality: 50 })
+      .toBuffer();
+
+    // Upload sur Cloudinary
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: "mon-vieux-grimoire",
+          public_id: filename,
+          format: "webp",
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(optimizedBuffer);
+    });
+
+    // Stocke l'URL Cloudinary et le public_id pour utilisation ultérieure
+    req.file.cloudinaryUrl = uploadResult.secure_url;
+    req.file.cloudinaryPublicId = uploadResult.public_id;
+
+    next();
+  } catch (error) {
+    console.error("Erreur lors du traitement de l'image:", error);
+    res.status(500).json({ error: "Erreur lors du traitement de l'image" });
   }
-
-  // Nettoyage du nom de fichier pour éviter les caractères problématiques
-  // Supprime l'extension d'origine et remplace les espaces par des underscores
-  const nameWithoutExt = req.file.originalname
-    .replace(/\.[^/.]+$/, "")
-    .split(" ")
-    .join("_");
-
-  // Génère un nom de fichier unique pour éviter les collisions
-  const filename = `${Date.now()}-${nameWithoutExt}.webp`;
-
-  // Conversion de l'image en WebP avec compression pour réduire le poids du fichier
-  await sharp(req.file.buffer)
-    .webp({ quality: 50 })
-    .toFile(`${dir}/${filename}`);
-
-  // Mise à jour des informations du fichier pour les contrôleurs suivants
-  req.file.filename = filename;
-  req.file.mimetype = "image/webp";
-
-  next();
 };
