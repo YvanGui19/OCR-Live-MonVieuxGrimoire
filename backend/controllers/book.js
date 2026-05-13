@@ -1,6 +1,15 @@
 const Book = require("../models/book");
 const cloudinary = require("../middleware/cloudinary-config");
 
+// Ajoute un champ "image" (nom de fichier) attendu par le frontend OCR original
+const addImageField = (book) => {
+  const obj = book.toObject ? book.toObject() : book;
+  if (obj.imageUrl) {
+    obj.image = obj.imageUrl.split("/").pop();
+  }
+  return obj;
+};
+
 // Extrait le public_id Cloudinary depuis l'URL de l'image
 const getPublicIdFromUrl = (imageUrl) => {
   // URL format: https://res.cloudinary.com/xxx/image/upload/v123/mon-vieux-grimoire/filename.webp
@@ -84,7 +93,7 @@ exports.getBestRatedBooks = (req, res, next) => {
   Book.find()
     .sort({ averageRating: -1 })
     .limit(3)
-    .then((books) => res.status(200).json(books))
+    .then((books) => res.status(200).json(books.map(addImageField)))
     .catch((error) => res.status(400).json({ error }));
 };
 
@@ -107,7 +116,7 @@ exports.getOneBook = (req, res, next) => {
 exports.getAllBook = (req, res, next) => {
   Book.find()
     .then((books) => {
-      res.status(200).json(books);
+      res.status(200).json(books.map(addImageField));
     })
     .catch((error) => {
       res.status(400).json({

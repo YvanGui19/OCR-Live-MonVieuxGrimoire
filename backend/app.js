@@ -5,6 +5,7 @@ const bookRoutes = require("./routes/book");
 const userRoutes = require("./routes/user");
 const path = require("path");
 const app = express();
+app.set('trust proxy', 1);
 
 // Connexion à la base de données MongoDB Atlas
 mongoose
